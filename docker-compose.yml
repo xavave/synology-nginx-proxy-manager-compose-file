@@ -1,0 +1,110 @@
+# Synology niginx proxy manager docker compose file (tested on Synology DSM 7.2)
+# based on excellent post from https://www.wundertech.net/nginx-proxy-manager-synology-nas-setup-instructions/
+
+# 1. if you want to use npm (nginx proxy manager), you need to forward ports on your router:
+# router port 80 goes to synology port 8085
+# router port 443     -->              4443 
+# 2. your router must be able to ping docker ip ranges
+# docker ip ranges are usually : 172.1x.xxx.xxx
+# in this compose file, I use 3 networks : 172.17.0.0/24 for mariadb sql, 192.168.1.198 for npm host in macvlan network,  and 192.168.10.0/24 for npm bridge
+# if your router does not ping your synology docker networks, you can use ip routes
+# e.g. my router is on LAN IP: 192.168.1.1
+# target: the docker network you want to route
+# gateway: your synology local IP address
+# IP routes to add:
+# e.g.   target              Gateway          metric    table
+#      172.17.0.0/16      192.168.1.xx          0        main
+#      172.18.0.0/16      192.168.1.xx          0        main
+#      172.19.0.0/16      192.168.1.xx          0        main
+#      192.168.10.0/16    192.168.1.xx          0        main
+
+# 3. npm usage: you can add a proxy host : e.g. test.yourdomain.com which forwards to destination on lan docker network : 172.17.0.1 
+#    (172.17.0.1 is the gateway for the docker subnet 172.17.0.0/16) and port: xxxx (the port you choosed to expose from your docker component) 
+
+
+version: '3'
+services:
+  npm:
+    image: jc21/nginx-proxy-manager:latest
+    container_name: Nginx-proxy-manager
+    ports:
+      - 8085:80  # http port for redirects
+      - 8082:81  # Port for admin web ui
+      - 4443:443  # https port for redirects
+    environment:
+      DB_MYSQL_HOST: "172.17.0.1"
+      DB_MYSQL_PORT: 3308 # default is 3306 but if already in use you can change it (as I did here)
+      DB_MYSQL_USER: "nginxproxymanager"
+      DB_MYSQL_PASSWORD: "nginxproxymanager"
+      DB_MYSQL_NAME: "nginxproxymanager"
+    volumes:
+      - ./nginx-proxy/data:/data:rw # you can create a folder in your synology docker folder : ./nginx-proxy/data 
+      - ./nginx-proxy/letsencrypt:/etc/letsencrypt:rw #same create a folder ./nginx-proxy/letsencrypt
+     # - ./nginx-proxy/config.json:/app/config/production.json #not used
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    restart: unless-stopped
+    networks:
+      npm_network:
+         ipv4_address: 192.168.1.198
+      npm_bridge:
+         ipv4_address: 192.168.10.2
+
+  npm_db:
+    image: mariadb:latest
+    container_name: npm_db
+    ports:
+      - 3308:3306 #map 3306 to 3308
+    environment:
+      MYSQL_ROOT_PASSWORD: 'nginxproxymanager'
+      MYSQL_DATABASE: 'nginxproxymanager'
+      MYSQL_USER: 'nginxproxymanager'
+      MYSQL_PASSWORD: 'nginxproxymanager'
+      PUID: 1026 #your synology userid 
+      GID: 100 # your group id 
+      TZ: Europe/Paris #time zone
+      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    volumes:
+      - ./mariadb/db:/var/lib/mysql
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+    restart: unless-stopped
+    networks:
+      npm_mariadb_bridge:
+         ipv4_address: 172.17.0.2
+  watchtower: #optional watchtower for automatic image updates
+    restart: unless-stopped
+    image: containrrr/watchtower
+    profiles: ["update"]
+    environment:
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_POLL_INTERVAL: 7200 # checks for updates every two hours
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+networks:
+  npm_network:
+    name: npm_network
+    driver: macvlan
+    driver_opts:
+      parent: bond0
+    ipam:
+      config: 
+        - subnet:  192.168.1.0/24
+          ip_range: 192.168.1.198/32
+          gateway: 192.168.1.1
+  npm_bridge:
+    name: npm_bridge
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.10.0/24
+          ip_range: 192.168.10.2/24
+          gateway: 192.168.10.1
+  npm_mariadb_bridge:
+    name: npm_mariadb_bridge
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.17.0.0/24
+          ip_range: 172.17.0.2/24
+          gateway: 172.17.0.1
