@@ -14,7 +14,7 @@ in this compose file, I use 3 networks : 172.17.0.0/24 for mariadb sql, 192.168.
 - if your router does not ping your synology docker networks, you can use ip routes as below
  fyi my router is on LAN IP: 192.168.1.1
 - target: the docker network you want to route
-- gateway: your synology local IP address
+- gateway: your synology local IP address (e.g. 192.168.1.xx where xx is between 2 and 255)
  IP routes to add:
 
  e.g. 
