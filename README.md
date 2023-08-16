@@ -16,11 +16,15 @@ in this compose file, I use 3 networks : 172.17.0.0/24 for mariadb sql, 192.168.
 - target: the docker network you want to route
 - gateway: your synology local IP address
  IP routes to add:
- e.g.   target              Gateway          metric    table
-      172.17.0.0/16      192.168.1.xx          0        main
-      172.18.0.0/16      192.168.1.xx          0        main
-      172.19.0.0/16      192.168.1.xx          0        main
-      192.168.10.0/16    192.168.1.xx          0        main
+
+ e.g. 
+
+|target         |    Gateway    |     metric    |    table      |
+| ------------- | ------------- | ------------- | ------------- |
+|172.17.0.0/16  |  192.168.1.xx |         0     |   main        |
+|172.18.0.0/16  |  192.168.1.xx |         0     |   main        |
+|172.19.0.0/16  |  192.168.1.xx |         0     |   main        |
+|192.168.10.0/16|  192.168.1.xx |         0     |   main        |
 
 3. npm usage: you can add a proxy host : e.g. test.yourdomain.com which forwards to destination on lan docker network : 172.17.0.1 
    (172.17.0.1 is the gateway for the docker subnet 172.17.0.0/16) and port: xxxx (the port you choosed to expose from your docker component) 
