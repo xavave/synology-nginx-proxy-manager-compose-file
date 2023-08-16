@@ -1,10 +1,10 @@
 # synology-nginx-proxy-manager-compose-file
-docker-compose file for synology npm
+docker-compose file for synology DSM 7+ npm
 
 Synology Nginx proxy manager docker compose file (tested on Synology DSM 7.2)
 based on excellent post from https://www.wundertech.net/nginx-proxy-manager-synology-nas-setup-instructions/
 
-1. if you want to use npm (nginx proxy manager), you need to forward ports on your router:
+1. if you want to use npm (nginx proxy manager) with this docker compose, you need to forward ports on your router:
 - router port 80 goes to synology lan ip and port 8085
 - router port 443     -->              4443 
 
